@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: budget-tracker-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: DATASOURCE_URL
+        sync: false
+      - key: DATASOURCE_USERNAME
+        sync: false
+      - key: DATASOURCE_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: PORT
+        value: 10000
