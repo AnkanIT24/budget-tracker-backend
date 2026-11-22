@@ -1,3 +1,4 @@
+
 package net.ankan.budget.service.impl;
 
 import lombok.RequiredArgsConstructor;
@@ -25,26 +26,45 @@ public class TransactionServiceImpl {
     private final TransactionMapper transactionMapper;
 
     private User getCurrentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        String email = SecurityContextHolder.getContext()
+                .getAuthentication().getName();
+
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
     }
 
-    public List<TransactionDto> getAll(Integer month, Integer year, TransactionType type, Long categoryId) {
+    public List<TransactionDto> getAll(
+            Integer month,
+            Integer year,
+            TransactionType type,
+            Long categoryId) {
+
         User user = getCurrentUser();
+
         Category category = (categoryId != null)
                 ? categoryRepository.findByIdAndUser(categoryId, user)
-                  .orElseThrow(() -> new ResourceNotFoundException("Category not found"))
+                  .orElseThrow(() ->
+                               new ResourceNotFoundException("Category not found"))
                 : null;
-        return transactionRepository.findFiltered(user, month, year, type, category)
-                .stream().map(transactionMapper::toDto).toList();
+
+        return transactionRepository
+                .findFiltered(user, month, year, type, category)
+                .stream()
+                .map(transactionMapper::toDto)
+                .toList();
     }
 
     @Transactional
     public TransactionDto create(TransactionDto dto) {
+
         User user = getCurrentUser();
-        Category category = categoryRepository.findByIdAndUser(dto.getCategoryId(), user)
-                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+
+        Category category = categoryRepository
+                .findByIdAndUser(dto.getCategoryId(), user)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Category not found"));
+
         Transaction transaction = Transaction.builder()
                 .user(user)
                 .category(category)
@@ -53,40 +73,90 @@ public class TransactionServiceImpl {
                 .note(dto.getNote())
                 .date(dto.getDate())
                 .build();
-        return transactionMapper.toDto(transactionRepository.save(transaction));
+
+        return transactionMapper.toDto(
+                transactionRepository.save(transaction));
     }
 
     @Transactional
     public TransactionDto update(Long id, TransactionDto dto) {
+
         User user = getCurrentUser();
-        Transaction transaction = transactionRepository.findByIdAndUser(id, user)
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + id));
-        Category category = categoryRepository.findByIdAndUser(dto.getCategoryId(), user)
-                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+
+        Transaction transaction = transactionRepository
+                .findByIdAndUser(id, user)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Transaction not found with id: " + id));
+
+        Category category = categoryRepository
+                .findByIdAndUser(dto.getCategoryId(), user)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Category not found"));
+
         transaction.setCategory(category);
         transaction.setType(dto.getType());
         transaction.setAmount(dto.getAmount());
         transaction.setNote(dto.getNote());
         transaction.setDate(dto.getDate());
-        return transactionMapper.toDto(transactionRepository.save(transaction));
+
+        return transactionMapper.toDto(
+                transactionRepository.save(transaction));
     }
 
     @Transactional
     public void delete(Long id) {
+
         User user = getCurrentUser();
-        Transaction transaction = transactionRepository.findByIdAndUser(id, user)
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + id));
+
+        Transaction transaction = transactionRepository
+                .findByIdAndUser(id, user)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Transaction not found with id: " + id));
+
         transactionRepository.delete(transaction);
     }
 
     public TransactionSummaryDto getSummary(int month, int year) {
+
         User user = getCurrentUser();
+
         BigDecimal income = transactionRepository
-                .sumByUserAndTypeAndMonthAndYear(user, TransactionType.INCOME, month, year);
+                .sumByUserAndTypeAndMonthAndYear(
+                        user, TransactionType.INCOME, month, year);
+
         BigDecimal expense = transactionRepository
-                .sumByUserAndTypeAndMonthAndYear(user, TransactionType.EXPENSE, month, year);
-        if (income  == null) income  = BigDecimal.ZERO;
-        if (expense == null) expense = BigDecimal.ZERO;
-        return new TransactionSummaryDto(month, year, income, expense, income.subtract(expense));
+                .sumByUserAndTypeAndMonthAndYear(
+                        user, TransactionType.EXPENSE, month, year);
+
+        if (income == null) {
+            income = BigDecimal.ZERO;
+        }
+
+        if (expense == null) {
+            expense = BigDecimal.ZERO;
+        }
+
+        return new TransactionSummaryDto(
+                month,
+                year,
+                income,
+                expense,
+                income.subtract(expense)
+        );
+    }
+
+    // Category-wise monthly expense analysis
+    public List<Object[]> getCategoryWiseSpending(int month, int year) {
+
+        User user = getCurrentUser();
+
+        return transactionRepository.findCategoryWiseSpending(
+                user,
+                TransactionType.EXPENSE,
+                month,
+                year
+        );
     }
 }

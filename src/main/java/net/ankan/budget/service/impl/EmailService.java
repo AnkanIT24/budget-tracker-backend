@@ -1,3 +1,4 @@
+
 package net.ankan.budget.service.impl;
 
 import lombok.RequiredArgsConstructor;
@@ -24,14 +25,12 @@ public class EmailService {
     @Value("${app.reset.expiry-minutes:30}")
     private long expiryMinutes;
 
-    /**
-     * Sent off the request thread on purpose. Gmail's SMTP handshake takes a
-     * second or two, and doing it inline would make /forgot-password noticeably
-     * slower for real accounts than for non-existent ones — handing an attacker
-     * a timing oracle for which emails are registered.
-     */
     @Async
-    public void sendPasswordResetEmail(String to, String fullName, String rawToken) {
+    public void sendPasswordResetEmail(
+            String to,
+            String fullName,
+            String rawToken
+    ) {
         String link = frontendUrl + "/reset-password?token=" + rawToken;
 
         String body = """
@@ -48,34 +47,47 @@ public class EmailService {
                 %s
 
                 This link expires in %d minutes and can only be used once.
-                If you didn't request a reset, you can ignore this email —
-                your password stays unchanged.
+                If you didn't request a reset, you can ignore this email.
+                Your password stays unchanged.
 
-                — BudgetTracker
+                BudgetTracker
                 """.formatted(fullName, link, rawToken, expiryMinutes);
 
         try {
             SimpleMailMessage message = new SimpleMailMessage();
-            if (!from.isBlank()) {
+
+            if (from != null && !from.isBlank()) {
                 message.setFrom(from);
             }
+
             message.setTo(to);
             message.setSubject("Reset your BudgetTracker password");
             message.setText(body);
+
             mailSender.send(message);
-            log.info("Password reset email dispatched to {}", maskEmail(to));
+
+            log.info(
+                    "Password reset email dispatched to {}",
+                    maskEmail(to)
+            );
+
         } catch (Exception ex) {
-            // Swallowed deliberately: the controller has already returned 200.
-            // Logging it keeps the failure visible in Render's log stream without
-            // telling the caller whether the address exists.
-            log.error("Failed to send password reset email to {}: {}",
-                    maskEmail(to), ex.getMessage());
+            log.error(
+                    "Failed to send password reset email to {}: {}",
+                    maskEmail(to),
+                    ex.getMessage(),
+                    ex
+            );
         }
     }
 
     private String maskEmail(String email) {
         int at = email.indexOf('@');
-        if (at <= 1) return "***";
+
+        if (at <= 1) {
+            return "***";
+        }
+
         return email.charAt(0) + "***" + email.substring(at);
     }
 }
